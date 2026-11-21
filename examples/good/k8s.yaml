@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: checkout, namespace: shop}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: checkout}}
+  template:
+    metadata:
+      labels: {app: checkout}
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: checkout
+    spec:
+      serviceAccountName: checkout
+      securityContext: {runAsNonRoot: true}
+      containers:
+        - name: app
+          image: ghcr.io/example/checkout@sha256:0000000000000000000000000000000000000000000000000000000000000001
+          env:
+            - name: DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: checkout-db, key: password}}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe: {httpGet: {path: /ready, port: 8080}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny, namespace: shop}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: {name: default, namespace: shop}
+spec:
+  mtls: {mode: STRICT}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: {name: allow-gateway, namespace: shop}
+spec:
+  selector: {matchLabels: {app: checkout}}
+  action: ALLOW
+  rules:
+    - from:
+        - source: {principals: ["cluster.local/ns/istio-system/sa/ingress"]}

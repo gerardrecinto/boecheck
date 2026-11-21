@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>boecheck | Body of Evidence from your config</title>
+<meta name="description" content="boecheck scans Kubernetes, Helm, Terraform and Ansible files and writes a NIST SP 800-53r5 Body of Evidence with 800-207 and HIPAA mappings, plus SLO burn-rate alerts and a runbook. Open source Go. Try it in your browser.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#07090E" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F5F8" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="boecheck: a Body of Evidence from your config files">
+<meta property="og:description" content="Scan Kubernetes, Helm, Terraform and Ansible. Get control-by-control evidence for NIST 800-53r5, 800-207 and HIPAA, and SLO alerts checked by promtool.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2310b981'/%3E%3Cpath d='M16 6l9 4v6c0 5-4 8-9 10-5-2-9-5-9-10v-6z' stroke='%2307090E' stroke-width='3' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=optional" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#07090E;--panel:#0B0F17;--panel2:#111726;--line:#182238;--fg:#E2E8F0;--mut:#94A3B8;--dim:#808FA5;--brand:#10B981;--brandtxt:#6EE7B7;--cyan:#22D3EE;--violet:#C4B5FD;--err:#FB7185;--warn:#FBBF24;--info:#38BDF8;--grid:rgba(255,255,255,.03);--a1:rgba(16,185,129,.16);--a2:rgba(139,92,246,.13);--a3:rgba(6,182,212,.11)}
+@media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#F4F5F8;--panel:#fff;--panel2:#FAFAFC;--line:#D9DCE3;--fg:#181C24;--mut:#535B69;--dim:#636C7A;--brand:#047857;--brandtxt:#065F46;--cyan:#155E75;--violet:#6D28D9;--err:#BE123C;--warn:#B45309;--info:#0369A1;--grid:rgba(0,0,0,.045);--a1:rgba(16,185,129,.2);--a2:rgba(139,92,246,.14);--a3:rgba(6,182,212,.16)}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+.aurora{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.aurora i{position:absolute;width:55vw;height:55vw;border-radius:50%;filter:blur(90px)}
+.aurora i:nth-child(1){background:var(--a1);top:-20vw;left:-10vw}.aurora i:nth-child(2){background:var(--a2);top:5vw;right:-15vw}.aurora i:nth-child(3){background:var(--a3);bottom:-25vw;left:25vw}
+.progress{position:fixed;top:0;left:0;height:2px;width:0;background:linear-gradient(90deg,var(--brand),var(--cyan));z-index:60}
+a{color:var(--brandtxt);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 16px}
+header{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--panel) 80%,transparent);backdrop-filter:blur(16px) saturate(150%);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.02em;color:var(--fg);font-size:18px}
+.brand:hover{text-decoration:none}.logo{width:28px;height:28px;border-radius:8px;background:var(--brand);display:grid;place-items:center}
+nav{display:flex;gap:4px;font:500 12px 'JetBrains Mono',monospace}nav a{color:var(--mut);padding:6px 10px;border-radius:8px}nav a:hover{background:var(--panel2);color:var(--brandtxt);text-decoration:none}
+@media (max-width:720px){nav a:not(.gh){display:none}}
+.hero{padding:72px 0 40px;text-align:center}
+.pill{display:inline-block;font:500 12px 'JetBrains Mono',monospace;color:var(--brandtxt);background:color-mix(in srgb,var(--brand) 12%,transparent);border:1px solid color-mix(in srgb,var(--brand) 35%,transparent);padding:4px 12px;border-radius:99px}
+h1{font-size:clamp(34px,6vw,60px);line-height:1.05;letter-spacing:-.035em;font-weight:800;margin:18px auto 16px;max-width:15em}
+h1 em{font-style:normal;background:linear-gradient(90deg,var(--brand),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--mut);font-size:18px;max-width:40em;margin:0 auto 28px}
+.cmd{display:inline-flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 16px;font:500 13px 'JetBrains Mono',monospace;max-width:100%;overflow-x:auto}
+.cmd code{white-space:nowrap}
+button{font:600 12px 'JetBrains Mono',monospace;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);padding:7px 12px}
+button:hover{border-color:var(--brand)}button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button.primary{background:var(--brand);border-color:var(--brand);color:#04110C}
+section{padding:40px 0}h2{font-size:28px;letter-spacing:-.02em;margin:0 0 6px}.sub{color:var(--mut);margin:0 0 24px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px}
+.play{display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+@media (max-width:860px){.play{grid-template-columns:1fr}}
+.play>div{padding:16px;min-width:0}.play>div+div{border-left:1px solid var(--line)}
+@media (max-width:860px){.play>div+div{border-left:0;border-top:1px solid var(--line)}}
+.bar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px;font:500 12px 'JetBrains Mono',monospace;color:var(--dim)}
+textarea{width:100%;height:440px;resize:vertical;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:12px;font:13px/1.5 'JetBrains Mono',monospace;tab-size:2}
+#out{height:440px;overflow:auto;font:13px/1.5 'JetBrains Mono',monospace}
+.f{border:1px solid var(--line);border-left-width:3px;border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--panel2)}
+.f.error{border-left-color:var(--err)}.f.warn{border-left-color:var(--warn)}.f.info{border-left-color:var(--info)}
+.f b{font-weight:600}.f .s{text-transform:uppercase;font-size:11px;letter-spacing:.06em}.f.error .s{color:var(--err)}.f.warn .s{color:var(--warn)}.f.info .s{color:var(--info)}
+.f .fix{color:var(--dim);margin-top:2px;font-family:Inter,sans-serif;font-size:13px}.empty{color:var(--dim);padding:24px 4px}
+.note{color:var(--dim);font-size:13px;margin:10px 2px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}th{font:500 12px 'JetBrains Mono',monospace;color:var(--dim)}tr:last-child td{border-bottom:0}
+td:first-child{font-family:'JetBrains Mono',monospace;color:var(--brandtxt);white-space:nowrap}.tw{overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{padding:18px}.card h3{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--mut);font-size:14px}.card .t{font:500 11px 'JetBrains Mono',monospace;color:var(--violet);margin-bottom:8px;display:block}
+pre{margin:0;padding:16px;overflow:auto;background:var(--bg);border-radius:12px;font:12.5px/1.6 'JetBrains Mono',monospace;color:var(--fg)}
+.ok{color:var(--brandtxt)}
+footer{border-top:1px solid var(--line);padding:28px 0 48px;color:var(--dim);font-size:14px;position:relative;z-index:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tabs button[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#04110C}
+pre.code{height:440px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font:12.5px/1.5 'JetBrains Mono',monospace;white-space:pre;margin:0}
+
+.tabs button[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#04110C}
+.f.pass{border-left-color:var(--brand)}.f.pass .s{color:var(--brandtxt)}.f .ctl{color:var(--violet);font-size:12px;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div><div class="progress" id="prog" aria-hidden="true"></div>
+<header><div class="wrap"><a class="brand" href="./"><span class="logo"><svg width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M16 6l9 4v6c0 5-4 8-9 10-5-2-9-5-9-10v-6z" stroke="#04110C" stroke-width="3.5" stroke-linejoin="round"/></svg></span>boecheck</a>
+<nav aria-label="Main"><a href="#try">Try it</a><a href="#skills">Skills</a><a href="#rules">Checks</a><a href="#slo">SLOs</a><a href="#proof">Proof</a><a href="#limits">Limits</a><a class="gh" href="https://github.com/gerardrecinto/boecheck">GitHub</a></nav></div></header>
+<main class="wrap">
+<div class="hero">
+<span class="pill">NIST 800-53r5 · 800-207 · HIPAA · Kubernetes · Terraform · Istio · SLOs</span>
+<h1>Config files in. <em>Body of Evidence</em> out.</h1>
+<p class="lead">boecheck scans Kubernetes, Helm, Terraform and Ansible files, reports what breaks a control, and writes the evidence control by control with the file and line. It also turns an SLO file into burn-rate alerts and a runbook.</p>
+<div class="cmd"><code id="c1">git clone https://github.com/gerardrecinto/boecheck.git &amp;&amp; cd boecheck &amp;&amp; go run ./cmd/boecheck scan examples/bad</code><button onclick="copy('c1',this)">Copy</button></div>
+<p class="note" id="copystatus" role="status">&nbsp;</p>
+</div>
+
+<section id="try"><h2>Try it in your browser</h2><p class="sub">The same Go code as the CLI, compiled to WebAssembly. Paste Kubernetes YAML or Terraform. Nothing leaves the page.</p>
+<div class="panel play">
+<div><div class="bar"><span>input</span><span><button id="s1">Bad k8s</button> <button id="s2">Good k8s</button> <button id="s3">Bad Terraform</button></span></div><textarea id="in" spellcheck="false" aria-label="Kubernetes YAML or Terraform"></textarea></div>
+<div><div class="bar"><span class="tabs" role="tablist"><button data-t="find" aria-pressed="true">Findings</button><button data-t="boe" aria-pressed="false">Body of Evidence</button></span><button class="primary" id="run">Scan</button></div>
+<div id="out" aria-live="polite"><div class="empty">Press Scan. The first run downloads the engine (about 1.2 MB compressed).</div></div><pre class="code" id="code" hidden></pre></div>
+</div></section>
+
+<section id="skills"><h2>The skills in the job, and where they are</h2><p class="sub">Each row is something in this repo you can run or read.</p>
+<div class="panel tw"><table><thead><tr><th>Skill</th><th>In this repo</th></tr></thead><tbody>
+<tr><td>NIST SP 800-53r5</td><td>Every check names the controls it gives evidence for. The Body of Evidence groups results by control, with file and line.</td></tr>
+<tr><td>NIST SP 800-207</td><td>Checks are also mapped to the zero trust tenets: mTLS (tenet 2), per-session access (3) and enforced authorization (6).</td></tr>
+<tr><td>HIPAA Security Rule</td><td>Encryption at rest, transmission security, access control and retention checks map to 45 CFR 164.312 and 164.316.</td></tr>
+<tr><td>Kubernetes and Helm</td><td>Pod security, pinned images, limits, probes, default-deny NetworkPolicy. <code>helm template | boecheck scan -</code> is part of the e2e run.</td></tr>
+<tr><td>Istio</td><td>Checks for namespace-wide STRICT mTLS and for an AuthorizationPolicy that is not allow-all. Mesh-wide policy in istio-system counts. Lab only, see <a href="https://github.com/gerardrecinto/meshdoctor">meshdoctor</a>.</td></tr>
+<tr><td>Terraform</td><td>Open security groups, S3 encryption and public access, encrypted databases and volumes, log retention.</td></tr>
+<tr><td>Ansible</td><td>Plays with TLS validation turned off or plain-text credentials.</td></tr>
+<tr><td>HashiCorp Vault</td><td>Detects Vault agent injection as evidence for IA-5 and flags secrets committed in manifests and playbooks. No Vault server is run here.</td></tr>
+<tr><td>SLIs, SLOs, alerting</td><td>An SLO file becomes multi-window burn-rate rules. promtool checks the rules and a unit test proves the page alert fires at a 2% error rate and stays quiet at 0.05%.</td></tr>
+<tr><td>Run books and SOPs</td><td><code>boecheck runbook</code> writes the budget math, the alert table and the response steps for each SLO.</td></tr>
+<tr><td>Bash and Python</td><td>The e2e is Bash with <code>set -euo pipefail</code>. Python is covered by my Qualcomm work, not this repo.</td></tr>
+</tbody></table></div></section>
+
+<section id="rules"><h2>The checks</h2><p class="sub">Run <code>boecheck checks</code> for the live list. Fail blocks a build, warn does not unless you pass <code>--strict</code>.</p>
+<div class="panel tw"><table><thead><tr><th>ID</th><th>Checks</th><th>800-53r5</th></tr></thead><tbody id="catalog"></tbody></table></div></section>
+
+<section id="slo"><h2>SLO file in, alerts and runbook out</h2><p class="sub">Burn rate is the share of budget spent times the window, divided by the look-back. Over 30 days: 2% in 1 hour is 14.4x, 5% in 6 hours is 6x, 10% in 3 days is 1x.</p>
+<div class="panel"><pre>service: checkout
+slos:
+  - name: availability
+    objective: 99.9
+    window: 30d
+    errors: sum(rate(http_requests_total{job="checkout",code=~"5.."}[$WINDOW]))
+    total: sum(rate(http_requests_total{job="checkout"}[$WINDOW]))
+
+$ boecheck slo slo.yaml     # Prometheus rules: 5 recording rules, 3 alerts
+$ boecheck runbook slo.yaml # RUNBOOK.md with budget math and response steps</pre></div></section>
+
+<section id="proof"><h2>Proof, not claims</h2><p class="sub">Output of <code>bash scripts/e2e.sh</code>.</p>
+<div class="panel"><pre id="e2e">PASS  go: vet and tests
+PASS  scan: examples/good is clean (20 checks: 20 pass, 0 warn, 0 fail)
+PASS  scan: examples/bad is rejected (20 checks: 0 pass, 5 warn, 15 fail)
+PASS  boe: Body of Evidence written to build/boe.md (238 lines)
+PASS  helm: rendered chart scanned through stdin
+PASS  slo: promtool accepts the generated rules
+PASS  slo: a 2% error rate fires the page alert, a 0.05% rate does not
+ALL PASS</pre></div>
+<p class="note">Run on my own lab manifests it flags them too (no default-deny policy, no limits, default service accounts). The tool is not tuned to flatter its author.</p></section>
+
+<section id="limits"><h2>Limits</h2>
+<div class="panel card"><p>This reads files. It shows configuration, not how a system runs, and it is not an assessment: an assessor decides what counts as evidence. The mapping from checks to controls is my reading, not an official crosswalk. The Terraform scanner finds resource blocks and checks their text; it does not evaluate variables, modules or count, so it can miss and can be fooled. Ansible checks apply to plays with hosts or tasks. Istio and Vault are checked as config only; no mesh or Vault server is started here. It covers a small set of controls, not a full baseline. I hold no clearance and have not run an A&amp;A package; this is a tool I built to learn the shape of one.</p></div></section>
+</main>
+<footer><div class="wrap">MIT license · <a href="https://github.com/gerardrecinto/boecheck">Source</a> · Built by <a href="https://github.com/gerardrecinto">Gerard Recinto</a></div></footer>
+<script>
+function copy(id,btn){var t=document.getElementById(id).innerText,s=document.getElementById('copystatus');
+function ok(){btn.innerText='Copied';s.textContent='Command copied.';setTimeout(function(){btn.innerText='Copy'},1500)}
+if(navigator.clipboard){navigator.clipboard.writeText(t).then(ok,function(){s.textContent='Select the command and copy it.'})}else{s.textContent='Select the command and copy it.'}}
+addEventListener('scroll',function(){var h=document.documentElement;document.getElementById('prog').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight||1)*100)+'%'},{passive:true});
+var inp=document.getElementById('in'),out=document.getElementById('out'),code=document.getElementById('code'),ready=null,last=null,tab='find';
+function load(name){return fetch(name).then(function(r){if(!r.ok)throw 0;return r.text()}).then(function(t){inp.value=t})}
+[['s1','sample-bad.yaml'],['s2','sample-good.yaml'],['s3','sample-bad.tf']].forEach(function(p){document.getElementById(p[0]).onclick=function(){load(p[1]).then(run)}});
+function engine(){if(ready)return ready;ready=new Promise(function(res,rej){var s=document.createElement('script');s.src='wasm_exec.js';s.onload=function(){var go=new Go();
+WebAssembly.instantiateStreaming(fetch('boecheck.wasm'),go.importObject).catch(function(){return fetch('boecheck.wasm').then(function(r){return r.arrayBuffer()}).then(function(b){return WebAssembly.instantiate(b,go.importObject)})}).then(function(m){go.run(m.instance);res()},rej)};s.onerror=rej;document.head.appendChild(s)});return ready}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function show(){if(!last)return;out.hidden=tab!=='find';code.hidden=tab!=='boe';
+if(last.error){out.innerHTML='<div class="f error"><b>Input error</b><div class="fix">'+esc(last.error)+'</div></div>';return}
+if(tab==='boe'){code.textContent=last.boe;return}
+var bad=last.results.filter(function(r){return r.status!=='pass'}),p=last.results.length-bad.length;
+out.innerHTML='<p class="note" style="margin:0 0 10px">'+last.results.length+' checks: '+p+' pass, '+bad.length+' need attention</p>'+(bad.length?bad.map(function(r){return '<div class="f '+(r.status==='fail'?'error':'warn')+'"><span class="s">'+r.status+' '+r.check+'</span> <b>'+esc(r.resource)+'</b> line '+r.line+'<div>'+esc(r.message)+'</div><div class="fix">'+esc(r.fix||'')+'</div><div class="ctl">'+esc(r.nist80053r5.join(', '))+'</div></div>'}).join(''):'<div class="f pass"><span class="s">pass</span> No findings.</div>')}
+Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){b.onclick=function(){tab=b.dataset.t;Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){x.setAttribute('aria-pressed',x===b)});show()}});
+function run(){out.hidden=false;code.hidden=true;out.innerHTML='<div class="empty">Loading engine...</div>';engine().then(function(){last=JSON.parse(boecheckScan(inp.value));show()}).catch(function(){out.innerHTML='<div class="empty">The engine did not load. Reload the page, or run the CLI with the command at the top.</div>'})}
+document.getElementById('run').onclick=run;load('sample-bad.yaml').catch(function(){inp.value='apiVersion: v1\nkind: Pod\nmetadata: {name: a}\n'});
+fetch('checks.json').then(function(r){return r.json()}).then(function(c){document.getElementById('catalog').innerHTML=c.map(function(x){return '<tr><td>'+x.id+'</td><td>'+esc(x.title)+' <span class="note">('+x.level+')</span></td><td>'+esc(x.nist80053r5.join(', '))+'</td></tr>'}).join('')}).catch(function(){});
+</script>
+</body>
+</html>

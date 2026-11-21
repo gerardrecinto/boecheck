@@ -1,0 +1,9 @@
+- hosts: web
+  vars:
+    db_password: hunter2
+  tasks:
+    - name: Fetch the release
+      ansible.builtin.get_url:
+        url: https://releases.example.com/shop.tgz
+        dest: /opt/shop.tgz
+        validate_certs: false

@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: checkout, namespace: shop}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: checkout}}
+  template:
+    metadata: {labels: {app: checkout}}
+    spec:
+      containers:
+        - name: app
+          image: checkout:latest
+          env:
+            - {name: DB_PASSWORD, value: hunter2}
+          securityContext: {privileged: true}
+---
+apiVersion: v1
+kind: Secret
+metadata: {name: checkout-db, namespace: shop}
+stringData: {password: hunter2}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: {name: allow-all, namespace: shop}
+spec:
+  rules: [{}]

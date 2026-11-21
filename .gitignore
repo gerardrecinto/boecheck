@@ -1,0 +1,6 @@
+bin/
+build/
+docs/boecheck.wasm
+docs/wasm_exec.js
+docs/sample-*
+docs/checks.json

@@ -1,0 +1,8 @@
+service: checkout
+owner: Platform team
+slos:
+  - name: availability
+    objective: 99.9
+    window: 30d
+    errors: sum(rate(http_requests_total{job="checkout",code=~"5.."}[$WINDOW]))
+    total: sum(rate(http_requests_total{job="checkout"}[$WINDOW]))

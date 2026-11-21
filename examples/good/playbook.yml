@@ -1,0 +1,13 @@
+- hosts: web
+  become: true
+  vars:
+    db_password: "{{ lookup('community.hashi_vault.hashi_vault', 'secret/data/shop:db') }}"
+    api_token: !vault |
+      $ANSIBLE_VAULT;1.1;AES256
+      6162636465666768
+  tasks:
+    - name: Fetch the release
+      ansible.builtin.get_url:
+        url: https://releases.example.com/shop.tgz
+        dest: /opt/shop.tgz
+        validate_certs: true

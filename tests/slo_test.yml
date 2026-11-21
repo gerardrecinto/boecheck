@@ -1,0 +1,33 @@
+rule_files:
+  - /w/build/rules.yml
+evaluation_interval: 1m
+tests:
+  # 2% errors for 2 hours: burns 20x the 0.1% budget, above 14.4x, so the 1h page fires.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="checkout",code="200"}'
+        values: '0+98x120'
+      - series: 'http_requests_total{job="checkout",code="500"}'
+        values: '0+2x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SLOBurnRatePage1H
+        exp_alerts:
+          - exp_labels: {severity: page, service: checkout, slo: availability}
+            exp_annotations:
+              summary: "checkout availability is burning its error budget 14.4x too fast"
+              description: "Objective 99.9% over 30d. At this rate the budget is gone in 50 hours. See RUNBOOK.md."
+  # 0.05% errors is half the budget rate: nothing should fire.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="checkout",code="200"}'
+        values: '0+9995x120'
+      - series: 'http_requests_total{job="checkout",code="500"}'
+        values: '0+5x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: SLOBurnRatePage1H
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: SLOBurnRatePage6H
+        exp_alerts: []
